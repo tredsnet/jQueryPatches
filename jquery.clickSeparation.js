@@ -11,7 +11,7 @@
  *
  * Date: 10.04.2014
  */
- 
+
 (function( $ )
 {
 	var timeOut = 200; // Время ожидания
@@ -28,26 +28,35 @@
 		// Для каждого объекта в цепи, по которой от сына отцу идет событие, нужно создать свой таймер и счетчик кликов
 		// то есть один глобальный объект нельзя держать, если два сына, то клик стает дабл кликом
 		event.currentTarget.clicks = ( event.currentTarget.clicks || 0 ) + 1;
+		
+		// По умолчанию - не даём сигнал дальше
+		event.preventDefault( );
+		event.stopPropagation( );
+		
 		var timeoutCallback = function( event )
 		{
 			return function( )
 			{
-				// Учитываем кол-во кликов, дергание мыши и стопинг пропагации
-				if( event.currentTarget.clicks === 1 && distance < maxDistance && ( !event.originalEvent || !event.originalEvent.cancelBubble ) )
-				{
-					$( event.currentTarget ).trigger( 'regclick', [event] );
-				}
-				else if( event.currentTarget.clicks > 1 && distance < maxDistance && ( !event.originalEvent || !event.originalEvent.cancelBubble ) )
-				{
-					$( event.currentTarget ).trigger( 'regdblclick', [event] );
-				}
-				event.currentTarget.clicks = 0;
+				// Очищаем таймер
 				clearTimeout( event.currentTarget.timer );
+				
+				// Учитываем кол-во кликов, дергание мыши и стопинг пропагации
+				if( event.currentTarget.clicks === 1 && distance < maxDistance )
+				{
+					$( event.currentTarget ).trigger( 'regclick', [ event ] );	
+				}
+				else if( event.currentTarget.clicks > 1 && distance < maxDistance )
+				{
+					$( event.currentTarget ).trigger( 'regdblclick', [ event ] );
+				}
+				
+				// Обнуляем счётчик кликов
+				event.currentTarget.clicks = 0;
 			};
 		};
 
 		// Устанавливаем таймер
-		event.currentTarget.timer = setTimeout( timeoutCallback( event ), timeOut || 250 );
+		event.currentTarget.timer = setTimeout( timeoutCallback( event ), timeOut );
 	};
 
 	// Начало движения
@@ -79,24 +88,25 @@
 
 	$.fn.on = function( ) // ( types, selector, data, fn, one )
 	{
-		var eventType = arguments[0];
+		var argumentList = $.extend( true, [], arguments );
+		var eventType = argumentList[0];
 
 		if( typeof eventType === 'object' // ( types-Object, selector, data )
 				|| ( typeof eventType === 'string' && eventType.indexOf( ' ' ) > -1 ) ) // types = "click mousemove etc..."
 		{
-			if( typeof arguments[1] !== 'string' ) // && selector != null
+			if( typeof argumentList[1] !== 'string' ) // && selector != null
 			{
 				// ( types-Object, data )
-				arguments[2] = arguments[2] || arguments[1];
-				arguments[1] = undefined;
+				argumentList[2] = argumentList[2] || argumentList[1];
+				argumentList[1] = undefined;
 			}
 
 			// Вызываем одиночные ON
 			if( typeof eventType === 'object' ) // Список действий в объекте
 			{
-				for( var type in arguments[0] )
+				for( var type in argumentList[0] )
 				{
-					this.on( type, arguments[1], arguments[2], arguments[0][ type ], arguments[4] );
+					this.on( type, argumentList[1], argumentList[2], argumentList[0][ type ], argumentList[4] );
 				}
 			}
 			else // Список действий в строке через пробел
@@ -105,7 +115,7 @@
 
 				for( var i in eventTypes )
 				{
-					this.on( eventTypes[i], arguments[1], arguments[2], arguments[3], arguments[4] );
+					this.on( eventTypes[i], argumentList[1], argumentList[2], argumentList[3], argumentList[4] );
 				}
 			}
 		}
@@ -119,53 +129,63 @@
 					var eventSelector = undefined;
 					var eventData = undefined;
 
-					if( ( arguments[2] === null || typeof arguments[2] === 'undefined' )
-							&& ( arguments[3] === null || typeof arguments[3] === 'undefined' )  ) // ( types, fn )
+					if( ( argumentList[2] === null || typeof argumentList[2] === 'undefined' )
+						&& ( argumentList[3] === null || typeof argumentList[3] === 'undefined' )  ) // ( types, fn )
 					{
-						eventFunc = arguments[1];
+						eventFunc = argumentList[1];
 						eventData = eventSelector = undefined;
 					}
-					else if( arguments[3] === null || typeof arguments[3] === 'undefined' )
+					else if( argumentList[3] === null || typeof argumentList[3] === 'undefined' )
 					{
-						if( typeof arguments[1] === 'string' ) // ( types, selector, fn )
+						if( typeof argumentList[1] === 'string' ) // ( types, selector, fn )
 						{
-							eventFunc = arguments[2];
+							eventFunc = argumentList[2];
 							eventData = undefined;
 						}
 						else // ( types, data, fn )
 						{
-							eventFunc = arguments[2];
-							eventData = arguments[3];
+							eventFunc = argumentList[2];
+							eventData = argumentList[3];
 							eventSelector = undefined;
 						}
 					}
 
 					// Инициируем навешивание текущей функции с дополнительными обработками
-					onMethod.call
-					(
-						this,
-						'reg' + eventType,
-						eventSelector,
-						eventData,
+					onMethod.call( this, 'reg' + eventType,	eventSelector, eventData,
 						function( regEvent, event )
 						{
 							// Важная проверка, чтобы знать мы ли это в цепи передачи событий
 							if( this === regEvent.target )
 							{
+								// Не даём передать этот сигнал дальше
+								regEvent.preventDefault( );
 								regEvent.stopPropagation( );
+								
+								// Сбрасываем параметры оригинального вызова
+								event.isDefaultPrevented = function returnFalse() { return false; };
+								event.isPropagationStopped = function returnFalse() { return false; };
+
+								// Вызываем оригинальную функцию
 								eventFunc.call( regEvent.target, event );
+								
+								// Если исходя из параметров сигнал нужно передать дальше - передаём
+								if( !event.isPropagationStopped( ) )
+								{
+									$( event.currentTarget.offsetParent ).trigger( 'click', [ event ] );	
+								}
 							}
 						}
 					);
 
-					//
+					// Считываем события к событию
 					var clickEvents = $._data( this[0], 'events' ) ? $._data( this[0], 'events' )[ 'click' ] : undefined;
 
 					// Если еще не записали ни одного клика - записываем
 					if( typeof clickEvents === 'undefined' )
 					{
+						// Непосредтсвенно клик
 						onMethod.call( this, 'click', eventSelector, eventData, singleDoubleClick );
-
+						
 						// Для проверки дергания мыши
 						onMethod.call( this, 'mousedown', eventSelector, eventData, startMoving );
 						onMethod.call( this, 'mouseup', eventSelector, eventData, endMoving );
@@ -175,7 +195,7 @@
 				}
 				default:
 				{
-					onMethod.apply( this, arguments ); // Вызов on без изменений
+					onMethod.apply( this, argumentList ); // Вызов on без изменений
 				}
 			}
 		}
