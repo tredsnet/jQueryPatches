@@ -11,8 +11,8 @@
  *
  * Date: 10.04.2014
  */
- 
- (function( $ )
+
+(function( $ )
 {
 	var isMouseDown = false; // Состояние нажатия курсора
 	var isMouseMove = false; // Состояние перемещения курсора
@@ -46,10 +46,6 @@
 				 this.id = 'drag' + ( new Date( ).getTime( ) );
 			}
 
-			dragObject[ this.id ] = dragObject[ this.id ] || {};
-			dragObject[ this.id ].status = 'on'; // Устанавалием статус drag`а
-			dragObject[ this.id ].holder = holder; // Устанавливаем того "в ком мы находимся"
-
 			// Обработка нажатия клавиши мышки
 			$( this ).mousedown( function( event )
 			{
@@ -72,6 +68,14 @@
 
 				return allowBubbling;
 			} );
+			
+			// Устанавливаем статус уже после навешивания обработчика
+			dragObject[ this.id ] = dragObject[ this.id ] || {};
+			dragObject[ this.id ].status = 'on'; // Устанавалием статус drag`а
+			dragObject[ this.id ].holder = holder; // Устанавливаем того "в ком мы находимся"
+			
+			// Вызываем "отпускание мышки", для избежания следования за курсором
+			$( document ).trigger( 'mouseup' );
 		} );
 
 		return this;
@@ -97,6 +101,9 @@
 			if( dragObject[ this.id ] !== undefined )
 			{
 				dragObject[ this.id ].status = 'on';
+				
+				// Вызываем "отпускание мышки", для избежания следования за курсором
+				$( document ).trigger( 'mouseup' );
 			}
 		} );
 	};
@@ -116,6 +123,7 @@
 	};
 
 	// Позиция курсора
+	// @todo: !!! вынести это отсюда, к этой функции обращаются другие скрипты !!!
 	$.getMousePosition = function( event )
 	{
 		var pos = { x: 0, y: 0, relativeX: 0, relativeY: 0 };
