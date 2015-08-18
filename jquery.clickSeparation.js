@@ -4,11 +4,12 @@
  * http://treds.net
  *
  * Developers:
+ * Brataschuk V.
  * Borisenko V.
  *
  * Released under the MIT license
  *
- * Date: 18.08.2015
+ * Date: 10.04.2014
  */
 
 (function( $ )
