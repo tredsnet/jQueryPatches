@@ -4,12 +4,11 @@
  * http://treds.net
  *
  * Developers:
- * Brataschuk V.
  * Borisenko V.
  *
  * Released under the MIT license
  *
- * Date: 10.04.2014
+ * Date: 18.08.2015
  */
 
 (function( $ )
@@ -47,6 +46,7 @@
 				}
 				else if( event.currentTarget.clicks > 1 && distance < maxDistance )
 				{
+					event.type = 'dblclick';
 					$( event.currentTarget ).trigger( 'regdblclick', [ event ] );
 				}
 				
@@ -162,8 +162,8 @@
 								regEvent.stopPropagation( );
 								
 								// Сбрасываем параметры оригинального вызова
-								event.isDefaultPrevented = function returnFalse() { return false; };
-								event.isPropagationStopped = function returnFalse() { return false; };
+								event.isDefaultPrevented = function returnFalse( ){ return false; };
+								event.isPropagationStopped = function returnFalse( ){ return false; };
 
 								// Вызываем оригинальную функцию
 								eventFunc.call( regEvent.target, event );
